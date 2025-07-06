@@ -55,6 +55,80 @@ npm start -- --verbose
 - `--port=<number>`: Specify the port for WebSocket transport (default: 3000)
 - `--verbose`: Enable verbose logging
 
+## Claude Desktop Configuration
+
+To use this MCP server with Claude Desktop, you need to add it to your Claude Desktop configuration file.
+
+### Configuration File Location
+
+The Claude Desktop configuration file is located at:
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+### Configuration
+
+Add the following configuration to your `claude_desktop_config.json` file:
+
+```json
+{
+  "mcpServers": {
+    "windows-desktop-automation": {
+      "command": "node",
+      "args": [
+        "/path/to/mcp-windows-desktop-automation/dist/index.js"
+      ],
+      "env": {}
+    }
+  }
+}
+```
+
+**Important Notes:**
+
+1. **Build the project first**: Make sure you've run `npm run build` to create the `dist/index.js` file
+2. **Update the path**: Replace `/path/to/mcp-windows-desktop-automation/` with the actual path to your cloned repository
+3. **Use absolute paths**: Always use absolute paths in the configuration
+4. **Path format examples**:
+   - **Windows**: `C:\\Users\\YourName\\Projects\\mcp-windows-desktop-automation\\dist\\index.js`
+   - **macOS/Linux**: `/home/username/projects/mcp-windows-desktop-automation/dist/index.js`
+5. **Restart Claude Desktop**: After updating the configuration, restart Claude Desktop for changes to take effect
+
+### Alternative Configuration (Using npm)
+
+If you prefer to use npm to run the server:
+
+```json
+{
+  "mcpServers": {
+    "windows-desktop-automation": {
+      "command": "npm",
+      "args": [
+        "start"
+      ],
+      "cwd": "/path/to/mcp-windows-desktop-automation",
+      "env": {}
+    }
+  }
+}
+```
+
+### Verification
+
+After configuring and restarting Claude Desktop:
+
+1. Start a new conversation
+2. Look for the 🔌 icon in the input area, which indicates MCP servers are connected
+3. You should be able to ask Claude to help with Windows automation tasks
+
+### Example Usage
+
+Once configured, you can ask Claude things like:
+- "Take a screenshot of my desktop"
+- "Open Notepad and type some text"
+- "Find the Calculator window and close it"
+- "Automate clicking a specific button on screen"
+
 ## Tools
 
 The server provides tools for:
