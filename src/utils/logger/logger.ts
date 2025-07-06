@@ -12,6 +12,7 @@ enum LogLevel {
 
 class Logger {
   private level: LogLevel = LogLevel.INFO;
+  private useStderr: boolean = false;
 
   /**
    * Set the minimum log level
@@ -22,13 +23,44 @@ class Logger {
   }
 
   /**
+   * Configure logger to use stderr instead of stdout
+   * This is important when using stdio transport for MCP
+   * @param useStderr Whether to write logs to stderr
+   */
+  setUseStderr(useStderr: boolean): void {
+    this.useStderr = useStderr;
+  }
+
+  /**
+   * Write log message to appropriate stream
+   * @param level Log level
+   * @param message The message to log
+   * @param data Additional data to log
+   */
+  private writeLog(level: string, message: string, data?: any): void {
+    const logMessage = `[${level}] ${message}${data ? ' ' + (typeof data === 'string' ? data : JSON.stringify(data)) : ''}`;
+    
+    if (this.useStderr) {
+      // Write to stderr to avoid interfering with JSON-RPC on stdout
+      process.stderr.write(logMessage + '\n');
+    } else {
+      // Use console methods for non-stdio transports
+      if (level === 'ERROR' || level === 'WARN') {
+        console.error(logMessage);
+      } else {
+        console.log(logMessage);
+      }
+    }
+  }
+
+  /**
    * Log verbose information
    * @param message The message to log
    * @param data Additional data to log (will be JSON stringified)
    */
   verbose(message: string, data?: any): void {
     if (this.level <= LogLevel.VERBOSE) {
-      console.log(`[VERBOSE] ${message}`, data ? JSON.stringify(data) : '');
+      this.writeLog('VERBOSE', message, data);
     }
   }
 
@@ -39,7 +71,7 @@ class Logger {
    */
   debug(message: string, data?: any): void {
     if (this.level <= LogLevel.DEBUG) {
-      console.log(`[DEBUG] ${message}`, data || '');
+      this.writeLog('DEBUG', message, data);
     }
   }
 
@@ -50,7 +82,7 @@ class Logger {
    */
   info(message: string, data?: any): void {
     if (this.level <= LogLevel.INFO) {
-      console.log(`[INFO] ${message}`, data || '');
+      this.writeLog('INFO', message, data);
     }
   }
 
@@ -61,7 +93,7 @@ class Logger {
    */
   warn(message: string, data?: any): void {
     if (this.level <= LogLevel.WARN) {
-      console.warn(`[WARN] ${message}`, data || '');
+      this.writeLog('WARN', message, data);
     }
   }
 
@@ -72,7 +104,7 @@ class Logger {
    */
   error(message: string, data?: any): void {
     if (this.level <= LogLevel.ERROR) {
-      console.error(`[ERROR] ${message}`, data || '');
+      this.writeLog('ERROR', message, data);
     }
   }
 }

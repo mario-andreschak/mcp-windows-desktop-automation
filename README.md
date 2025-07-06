@@ -55,6 +55,26 @@ npm start -- --verbose
 - `--port=<number>`: Specify the port for WebSocket transport (default: 3000)
 - `--verbose`: Enable verbose logging
 
+## Troubleshooting
+
+### JSON-RPC Communication Issues
+
+If you see "Unexpected token" or "not valid JSON" errors when using MCP clients:
+
+1. **Ensure the project is built**: Run `npm run build` to compile TypeScript
+2. **Check configuration**: Make sure your MCP client configuration is correct
+3. **Restart the client**: Always restart your MCP client after configuration changes
+4. **Check logs**: The server writes logs to stderr, which you can see in your client's developer console
+
+### Logging
+
+When using stdio transport (most MCP clients), all application logs are written to stderr to avoid interfering with the JSON-RPC protocol on stdout. Use the `--verbose` flag for detailed logging:
+
+```bash
+# For debugging (if running standalone)
+npm start -- --verbose
+```
+
 ## Tools
 
 The server provides tools for:

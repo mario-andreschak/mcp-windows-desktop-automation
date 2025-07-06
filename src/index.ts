@@ -32,22 +32,29 @@ const transport = transportArg
   ? transportArg.split('=')[1] 
   : 'stdio';
 
+// Configure logger for stdio transport
+if (transport === 'stdio') {
+  log.setUseStderr(true); // Write logs to stderr to avoid interfering with JSON-RPC
+}
+
 // Determine port for WebSocket transport
 const port = portArg 
   ? parseInt(portArg.split('=')[1], 10) 
   : 3000;
 
-// Print startup banner
-console.log('╔════════════════════════════════════════════════════════════╗');
-console.log('║                                                            ║');
-console.log('║  MCP Windows Desktop Automation Server                     ║');
-console.log('║                                                            ║');
-console.log(`║  Transport: ${transport.padEnd(47)}║`);
-if (transport === 'websocket') {
-  console.log(`║  Port: ${port.toString().padEnd(51)}║`);
+// Print startup banner (only for non-stdio transports)
+if (transport !== 'stdio') {
+  console.log('╔════════════════════════════════════════════════════════════╗');
+  console.log('║                                                            ║');
+  console.log('║  MCP Windows Desktop Automation Server                     ║');
+  console.log('║                                                            ║');
+  console.log(`║  Transport: ${transport.padEnd(47)}║`);
+  if (transport === 'websocket') {
+    console.log(`║  Port: ${port.toString().padEnd(51)}║`);
+  }
+  console.log('║                                                            ║');
+  console.log('╚════════════════════════════════════════════════════════════╝');
 }
-console.log('║                                                            ║');
-console.log('╚════════════════════════════════════════════════════════════╝');
 
 // Start the server
 async function startServer() {
