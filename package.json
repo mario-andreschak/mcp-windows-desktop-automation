@@ -1,38 +1,47 @@
 {
   "name": "mcp-windows-desktop-automation",
-  "version": "0.1.0",
-  "description": "MCP server for Windows desktop automation",
-  "main": "dist/index.js",
-  "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "lint": "eslint src/**/*.ts",
-    "test": "jest"
+  "version": "2.0.0",
+  "description": "Windows desktop automation with bounded native workers and MCP 2026/legacy transports",
+  "type": "module",
+  "main": "./dist/server/server.js",
+  "types": "./dist/server/server.d.ts",
+  "exports": {
+    ".": "./dist/server/server.js"
   },
-  "keywords": [
-    "mcp",
-    "windows",
-    "automation",
-    "autoit"
+  "bin": {
+    "mcp-windows-desktop-automation": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
-  "author": "",
-  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc && node scripts/copy-assets.mjs",
+    "start": "node dist/index.js",
+    "check": "npm run build && npm test",
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "test:package": "node scripts/package-acceptance.mjs",
+    "prepack": "npm run build"
+  },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.7.0",
-    "node-autoit-koffi": "^1.0.5",
-    "ws": "^8.18.1"
+    "@modelcontextprotocol/server": "2.0.0",
+    "@modelcontextprotocol/node": "2.0.0",
+    "node-autoit-koffi": "1.0.7",
+    "zod": "4.5.4",
+    "koffi": "2.16.3"
   },
   "devDependencies": {
-    "@types/express": "^4.17.17",
-    "@types/node": "^18.15.11",
-    "@types/ws": "^8.18.0",
-    "@typescript-eslint/eslint-plugin": "^5.57.1",
-    "@typescript-eslint/parser": "^5.57.1",
-    "eslint": "^8.38.0",
-    "jest": "^29.5.0",
-    "ts-jest": "^29.1.0",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.0.4"
-  }
+    "@types/node": "22.19.15",
+    "typescript": "5.9.3",
+    "pngjs": "7.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mario-andreschak/mcp-windows-desktop-automation.git"
+  },
+  "license": "MIT"
 }

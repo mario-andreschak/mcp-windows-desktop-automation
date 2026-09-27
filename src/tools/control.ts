@@ -2,11 +2,11 @@
  * Control-related tools for MCP Windows Desktop Automation
  */
 
-import * as autoIt from 'node-autoit-koffi';
+import { autoIt } from '../native/runtime.js';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { createToolResponse, createErrorResponse, schemas } from '../utils/types';
-import { log } from '../utils/logger/logger';
+import { ToolRegistry as McpServer } from '../server/tools.js';
+import { createToolResponse, createErrorResponse, schemas } from '../utils/types.js';
+import { log } from '../utils/logger/logger.js';
 
 /**
  * Register control-related tools with the MCP server
@@ -21,8 +21,8 @@ export function registerControlTools(server: McpServer): void {
       control: schemas.controlName,
       button: schemas.mouseButton,
       clicks: schemas.mouseClicks,
-      x: z.number().optional().describe('X coordinate within control'),
-      y: z.number().optional().describe('Y coordinate within control')
+      x: z.number().int().min(-2147483648).max(2147483647).optional().describe('X coordinate within control'),
+      y: z.number().int().min(-2147483648).max(2147483647).optional().describe('Y coordinate within control')
     },
     async ({ title, text, control, button, clicks, x, y }) => {
       try {
@@ -33,7 +33,7 @@ export function registerControlTools(server: McpServer): void {
         return createToolResponse(
           success
             ? `Clicked on control "${control}" in window "${title}"`
-            : `Failed to click on control "${control}" in window "${title}"`
+            : `Failed to click on control "${control}" in window "${title}"`, !success
         );
       } catch (error) {
         log.error('controlClick failed', error);
@@ -50,8 +50,8 @@ export function registerControlTools(server: McpServer): void {
       controlHandle: schemas.handle,
       button: schemas.mouseButton,
       clicks: schemas.mouseClicks,
-      x: z.number().optional().describe('X coordinate within control'),
-      y: z.number().optional().describe('Y coordinate within control')
+      x: z.number().int().min(-2147483648).max(2147483647).optional().describe('X coordinate within control'),
+      y: z.number().int().min(-2147483648).max(2147483647).optional().describe('Y coordinate within control')
     },
     async ({ windowHandle, controlHandle, button, clicks, x, y }) => {
       try {
@@ -62,7 +62,7 @@ export function registerControlTools(server: McpServer): void {
         return createToolResponse(
           success
             ? `Clicked on control handle ${controlHandle} in window handle ${windowHandle}`
-            : `Failed to click on control handle ${controlHandle} in window handle ${windowHandle}`
+            : `Failed to click on control handle ${controlHandle} in window handle ${windowHandle}`, !success
         );
       } catch (error) {
         log.error('controlClickByHandle failed', error);
@@ -78,8 +78,8 @@ export function registerControlTools(server: McpServer): void {
       title: schemas.windowTitle,
       text: schemas.windowText,
       control: schemas.controlName,
-      command: z.string().describe('Command to send'),
-      extra: z.string().optional().describe('Extra parameter for the command'),
+      command: z.string().max(65535).describe('Command to send'),
+      extra: z.string().max(65535).optional().describe('Extra parameter for the command'),
       bufSize: schemas.bufferSize
     },
     async ({ title, text, control, command, extra, bufSize }) => {
@@ -137,7 +137,7 @@ export function registerControlTools(server: McpServer): void {
         return createToolResponse(
           success
             ? `Text set in control "${control}" to "${controlText}"`
-            : `Failed to set text in control "${control}"`
+            : `Failed to set text in control "${control}"`, !success
         );
       } catch (error) {
         log.error('controlSetText failed', error);
@@ -154,7 +154,7 @@ export function registerControlTools(server: McpServer): void {
       text: schemas.windowText,
       control: schemas.controlName,
       sendText: schemas.controlText,
-      mode: z.number().optional().describe('Send mode flag')
+      mode: z.number().int().min(-2147483648).max(2147483647).optional().describe('Send mode flag')
     },
     async ({ title, text, control, sendText, mode }) => {
       try {
@@ -165,7 +165,7 @@ export function registerControlTools(server: McpServer): void {
         return createToolResponse(
           success
             ? `Keystrokes "${sendText}" sent to control "${control}"`
-            : `Failed to send keystrokes to control "${control}"`
+            : `Failed to send keystrokes to control "${control}"`, !success
         );
       } catch (error) {
         log.error('controlSend failed', error);
@@ -191,7 +191,7 @@ export function registerControlTools(server: McpServer): void {
         return createToolResponse(
           success
             ? `Focus set to control "${control}"`
-            : `Failed to set focus to control "${control}"`
+            : `Failed to set focus to control "${control}"`, !success
         );
       } catch (error) {
         log.error('controlFocus failed', error);
@@ -254,10 +254,10 @@ export function registerControlTools(server: McpServer): void {
       title: schemas.windowTitle,
       text: schemas.windowText,
       control: schemas.controlName,
-      x: z.number().describe('X coordinate'),
-      y: z.number().describe('Y coordinate'),
-      width: z.number().optional().describe('Control width'),
-      height: z.number().optional().describe('Control height')
+      x: z.number().int().min(-2147483648).max(2147483647).describe('X coordinate'),
+      y: z.number().int().min(-2147483648).max(2147483647).describe('Y coordinate'),
+      width: z.number().int().min(-2147483648).max(2147483647).optional().describe('Control width'),
+      height: z.number().int().min(-2147483648).max(2147483647).optional().describe('Control height')
     },
     async ({ title, text, control, x, y, width, height }) => {
       try {
@@ -269,7 +269,7 @@ export function registerControlTools(server: McpServer): void {
         return createToolResponse(
           success
             ? `Control "${control}" moved to (${x}, ${y})${sizeInfo}`
-            : `Failed to move control "${control}"`
+            : `Failed to move control "${control}"`, !success
         );
       } catch (error) {
         log.error('controlMove failed', error);
@@ -295,7 +295,7 @@ export function registerControlTools(server: McpServer): void {
         return createToolResponse(
           success
             ? `Control "${control}" shown`
-            : `Failed to show control "${control}"`
+            : `Failed to show control "${control}"`, !success
         );
       } catch (error) {
         log.error('controlShow failed', error);
@@ -321,7 +321,7 @@ export function registerControlTools(server: McpServer): void {
         return createToolResponse(
           success
             ? `Control "${control}" hidden`
-            : `Failed to hide control "${control}"`
+            : `Failed to hide control "${control}"`, !success
         );
       } catch (error) {
         log.error('controlHide failed', error);

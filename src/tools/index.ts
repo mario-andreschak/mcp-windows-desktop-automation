@@ -2,12 +2,12 @@
  * Tools module for MCP Windows Desktop Automation
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { registerMouseTools } from './mouse';
-import { registerKeyboardTools } from './keyboard';
-import { registerWindowTools } from './window';
-import { registerProcessTools } from './process';
-import { registerControlTools } from './control';
+import { ToolRegistry as McpServer } from '../server/tools.js';
+import { registerMouseTools } from './mouse.js';
+import { registerKeyboardTools } from './keyboard.js';
+import { registerWindowTools } from './window.js';
+import { registerProcessTools } from './process.js';
+import { registerControlTools } from './control.js';
 
 /**
  * Register all AutoIt tools with the MCP server

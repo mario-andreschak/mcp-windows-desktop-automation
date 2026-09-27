@@ -3,7 +3,8 @@
  */
 
 import { z } from 'zod';
-import { CallToolResult, TextContent } from '@modelcontextprotocol/sdk/types.js';
+import { NativeError } from '../native/runtime.js';
+import { CallToolResult, TextContent } from '@modelcontextprotocol/server';
 
 /**
  * Point coordinates
@@ -26,8 +27,9 @@ export interface Rect {
 /**
  * Standard tool response creator
  */
-export function createToolResponse(message: string): CallToolResult {
+export function createToolResponse(message: string, isError = false): CallToolResult {
   return {
+    ...(isError ? { isError: true } : {}),
     content: [
       {
         type: 'text',
@@ -41,7 +43,7 @@ export function createToolResponse(message: string): CallToolResult {
  * Standard error response creator
  */
 export function createErrorResponse(error: Error | string): CallToolResult {
-  const errorMessage = typeof error === 'string' ? error : error.message;
+  const errorMessage = error instanceof NativeError ? error.message : 'Desktop operation failed.';
   return {
     content: [
       {
@@ -58,25 +60,25 @@ export function createErrorResponse(error: Error | string): CallToolResult {
  */
 export const schemas = {
   // Window identification
-  windowTitle: z.string().describe('Window title'),
-  windowText: z.string().optional().describe('Window text'),
+  windowTitle: z.string().max(65535).describe('Window title'),
+  windowText: z.string().max(65535).optional().describe('Window text'),
   
   // Mouse parameters
   mouseButton: z.enum(['left', 'right', 'middle']).optional().default('left').describe('Mouse button'),
-  mouseSpeed: z.number().min(1).max(100).optional().default(10).describe('Mouse movement speed (1-100)'),
-  mouseX: z.number().describe('X coordinate'),
-  mouseY: z.number().describe('Y coordinate'),
-  mouseClicks: z.number().min(1).optional().default(1).describe('Number of clicks'),
+  mouseSpeed: z.number().int().min(-2147483648).max(2147483647).min(1).max(100).optional().default(10).describe('Mouse movement speed (1-100)'),
+  mouseX: z.number().int().min(-2147483648).max(2147483647).describe('X coordinate'),
+  mouseY: z.number().int().min(-2147483648).max(2147483647).describe('Y coordinate'),
+  mouseClicks: z.number().int().min(-2147483648).max(2147483647).min(1).max(100).optional().default(1).describe('Number of clicks'),
   
   // Control parameters
-  controlName: z.string().describe('Control identifier'),
-  controlText: z.string().describe('Text to set/send to control'),
+  controlName: z.string().max(65535).describe('Control identifier'),
+  controlText: z.string().max(65535).describe('Text to set/send to control'),
   
   // Process parameters
-  processName: z.string().describe('Process name or executable path'),
-  processTimeout: z.number().optional().describe('Timeout in milliseconds'),
+  processName: z.string().max(65535).describe('Process name or executable path'),
+  processTimeout: z.number().int().min(1).max(25).default(10).describe('Timeout in seconds (1-25; default 10)'),
   
   // Common parameters
-  handle: z.number().describe('Window or control handle'),
-  bufferSize: z.number().optional().describe('Buffer size for string operations')
+  handle: z.number().int().min(-2147483648).max(2147483647).describe('Window or control handle'),
+  bufferSize: z.number().int().min(2).max(65536).optional().describe('Buffer size for string operations')
 };

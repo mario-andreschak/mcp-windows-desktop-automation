@@ -2,11 +2,11 @@
  * Window-related tools for MCP Windows Desktop Automation
  */
 
-import * as autoIt from 'node-autoit-koffi';
+import { autoIt } from '../native/runtime.js';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { createToolResponse, createErrorResponse, schemas } from '../utils/types';
-import { log } from '../utils/logger/logger';
+import { ToolRegistry as McpServer } from '../server/tools.js';
+import { createToolResponse, createErrorResponse, schemas } from '../utils/types.js';
+import { log } from '../utils/logger/logger.js';
 
 /**
  * Register window-related tools with the MCP server
@@ -56,7 +56,7 @@ export function registerWindowTools(server: McpServer): void {
     'winActive',
     {
       title: schemas.windowTitle,
-      text: z.string().describe('Window text')
+      text: z.string().max(65535).describe('Window text')
     },
     async ({ title, text }) => {
       try {
@@ -209,10 +209,10 @@ export function registerWindowTools(server: McpServer): void {
     {
       title: schemas.windowTitle,
       text: schemas.windowText,
-      x: z.number().describe('X coordinate'),
-      y: z.number().describe('Y coordinate'),
-      width: z.number().optional().describe('Window width'),
-      height: z.number().optional().describe('Window height')
+      x: z.number().int().min(-2147483648).max(2147483647).describe('X coordinate'),
+      y: z.number().int().min(-2147483648).max(2147483647).describe('Y coordinate'),
+      width: z.number().int().min(-2147483648).max(2147483647).optional().describe('Window width'),
+      height: z.number().int().min(-2147483648).max(2147483647).optional().describe('Window height')
     },
     async ({ title, text, x, y, width, height }) => {
       try {
@@ -234,7 +234,7 @@ export function registerWindowTools(server: McpServer): void {
     {
       title: schemas.windowTitle,
       text: schemas.windowText,
-      flags: z.number().describe('State flags')
+      flags: z.number().int().min(-2147483648).max(2147483647).describe('State flags')
     },
     async ({ title, text, flags }) => {
       try {
@@ -255,7 +255,7 @@ export function registerWindowTools(server: McpServer): void {
     {
       title: schemas.windowTitle,
       text: schemas.windowText,
-      timeout: z.number().optional().describe('Timeout in seconds')
+      timeout: z.number().int().min(1).max(25).default(10).describe('Timeout in seconds (1-25; default 10)')
     },
     async ({ title, text, timeout }) => {
       try {
@@ -266,7 +266,7 @@ export function registerWindowTools(server: McpServer): void {
         return createToolResponse(
           success
             ? `Window "${title}" appeared within the timeout`
-            : `Window "${title}" did not appear within the timeout`
+            : `Window "${title}" did not appear within the timeout`, !success
         );
       } catch (error) {
         log.error('winWait failed', error);
@@ -281,7 +281,7 @@ export function registerWindowTools(server: McpServer): void {
     {
       title: schemas.windowTitle,
       text: schemas.windowText,
-      timeout: z.number().optional().describe('Timeout in seconds')
+      timeout: z.number().int().min(1).max(25).default(10).describe('Timeout in seconds (1-25; default 10)')
     },
     async ({ title, text, timeout }) => {
       try {
@@ -292,7 +292,7 @@ export function registerWindowTools(server: McpServer): void {
         return createToolResponse(
           success
             ? `Window "${title}" became active within the timeout`
-            : `Window "${title}" did not become active within the timeout`
+            : `Window "${title}" did not become active within the timeout`, !success
         );
       } catch (error) {
         log.error('winWaitActive failed', error);
@@ -307,7 +307,7 @@ export function registerWindowTools(server: McpServer): void {
     {
       title: schemas.windowTitle,
       text: schemas.windowText,
-      timeout: z.number().optional().describe('Timeout in seconds')
+      timeout: z.number().int().min(1).max(25).default(10).describe('Timeout in seconds (1-25; default 10)')
     },
     async ({ title, text, timeout }) => {
       try {
@@ -318,7 +318,7 @@ export function registerWindowTools(server: McpServer): void {
         return createToolResponse(
           success
             ? `Window "${title}" closed within the timeout`
-            : `Window "${title}" did not close within the timeout`
+            : `Window "${title}" did not close within the timeout`, !success
         );
       } catch (error) {
         log.error('winWaitClose failed', error);

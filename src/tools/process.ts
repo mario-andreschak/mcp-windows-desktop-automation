@@ -2,11 +2,11 @@
  * Process-related tools for MCP Windows Desktop Automation
  */
 
-import * as autoIt from 'node-autoit-koffi';
+import { autoIt } from '../native/runtime.js';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { createToolResponse, createErrorResponse, schemas } from '../utils/types';
-import { log } from '../utils/logger/logger';
+import { ToolRegistry as McpServer } from '../server/tools.js';
+import { createToolResponse, createErrorResponse, schemas } from '../utils/types.js';
+import { log } from '../utils/logger/logger.js';
 
 /**
  * Register process-related tools with the MCP server
@@ -16,16 +16,16 @@ export function registerProcessTools(server: McpServer): void {
   server.tool(
     'run',
     {
-      program: z.string().describe('Program path or command'),
-      workingDir: z.string().optional().describe('Working directory'),
-      showFlag: z.number().optional().describe('Window show flag')
+      program: z.string().max(65535).describe('Program path or command'),
+      workingDir: z.string().max(65535).optional().describe('Working directory'),
+      showFlag: z.number().int().min(-2147483648).max(2147483647).optional().describe('Window show flag')
     },
     async ({ program, workingDir, showFlag }) => {
       try {
         log.verbose('run called', { program, workingDir, showFlag });
         await autoIt.init();
         const result = await autoIt.run(program, workingDir, showFlag);
-        return createToolResponse(`Program "${program}" started with process ID: ${result}`);
+        return createToolResponse(result ? `Program "${program}" started with process ID: ${result}` : 'Program failed to start.', !result);
       } catch (error) {
         log.error('run failed', error);
         return createErrorResponse(error instanceof Error ? error : String(error));
@@ -37,9 +37,9 @@ export function registerProcessTools(server: McpServer): void {
   server.tool(
     'runWait',
     {
-      program: z.string().describe('Program path or command'),
-      workingDir: z.string().optional().describe('Working directory'),
-      showFlag: z.number().optional().describe('Window show flag')
+      program: z.string().max(65535).describe('Program path or command'),
+      workingDir: z.string().max(65535).optional().describe('Working directory'),
+      showFlag: z.number().int().min(-2147483648).max(2147483647).optional().describe('Window show flag')
     },
     async ({ program, workingDir, showFlag }) => {
       try {
@@ -58,13 +58,13 @@ export function registerProcessTools(server: McpServer): void {
   server.tool(
     'runAs',
     {
-      user: z.string().describe('Username'),
-      domain: z.string().describe('Domain'),
-      password: z.string().describe('Password'),
-      logonFlag: z.number().describe('Logon flag'),
-      program: z.string().describe('Program path or command'),
-      workingDir: z.string().optional().describe('Working directory'),
-      showFlag: z.number().optional().describe('Window show flag')
+      user: z.string().max(65535).describe('Username'),
+      domain: z.string().max(65535).describe('Domain'),
+      password: z.string().max(65535).describe('Password'),
+      logonFlag: z.number().int().min(-2147483648).max(2147483647).describe('Logon flag'),
+      program: z.string().max(65535).describe('Program path or command'),
+      workingDir: z.string().max(65535).optional().describe('Working directory'),
+      showFlag: z.number().int().min(-2147483648).max(2147483647).optional().describe('Window show flag')
     },
     async ({ user, domain, password, logonFlag, program, workingDir, showFlag }) => {
       try {
@@ -83,13 +83,13 @@ export function registerProcessTools(server: McpServer): void {
   server.tool(
     'runAsWait',
     {
-      user: z.string().describe('Username'),
-      domain: z.string().describe('Domain'),
-      password: z.string().describe('Password'),
-      logonFlag: z.number().describe('Logon flag'),
-      program: z.string().describe('Program path or command'),
-      workingDir: z.string().optional().describe('Working directory'),
-      showFlag: z.number().optional().describe('Window show flag')
+      user: z.string().max(65535).describe('Username'),
+      domain: z.string().max(65535).describe('Domain'),
+      password: z.string().max(65535).describe('Password'),
+      logonFlag: z.number().int().min(-2147483648).max(2147483647).describe('Logon flag'),
+      program: z.string().max(65535).describe('Program path or command'),
+      workingDir: z.string().max(65535).optional().describe('Working directory'),
+      showFlag: z.number().int().min(-2147483648).max(2147483647).optional().describe('Window show flag')
     },
     async ({ user, domain, password, logonFlag, program, workingDir, showFlag }) => {
       try {
@@ -118,7 +118,7 @@ export function registerProcessTools(server: McpServer): void {
         const exists = result !== 0;
         return createToolResponse(
           exists
-            ? `Process "${process}" exists with PID: ${result}`
+            ? `Process "${process}" exists`
             : `Process "${process}" does not exist`
         );
       } catch (error) {
@@ -143,7 +143,7 @@ export function registerProcessTools(server: McpServer): void {
         return createToolResponse(
           success
             ? `Process "${process}" closed successfully`
-            : `Failed to close process "${process}"`
+            : `Failed to close process "${process}"`, !success
         );
       } catch (error) {
         log.error('processClose failed', error);
@@ -157,7 +157,7 @@ export function registerProcessTools(server: McpServer): void {
     'processSetPriority',
     {
       process: schemas.processName,
-      priority: z.number().describe('Priority level (0-4)')
+      priority: z.number().int().min(-2147483648).max(2147483647).describe('Priority level (0-4)')
     },
     async ({ process, priority }) => {
       try {
@@ -168,7 +168,7 @@ export function registerProcessTools(server: McpServer): void {
         return createToolResponse(
           success
             ? `Priority for process "${process}" set to ${priority}`
-            : `Failed to set priority for process "${process}"`
+            : `Failed to set priority for process "${process}"`, !success
         );
       } catch (error) {
         log.error('processSetPriority failed', error);
@@ -192,8 +192,8 @@ export function registerProcessTools(server: McpServer): void {
         const success = result !== 0;
         return createToolResponse(
           success
-            ? `Process "${process}" exists with PID: ${result}`
-            : `Timed out waiting for process "${process}"`
+            ? `Process "${process}" exists`
+            : `Timed out waiting for process "${process}"`, !success
         );
       } catch (error) {
         log.error('processWait failed', error);
@@ -218,7 +218,7 @@ export function registerProcessTools(server: McpServer): void {
         return createToolResponse(
           success
             ? `Process "${process}" closed within the timeout`
-            : `Timed out waiting for process "${process}" to close`
+            : `Timed out waiting for process "${process}" to close`, !success
         );
       } catch (error) {
         log.error('processWaitClose failed', error);
@@ -231,7 +231,7 @@ export function registerProcessTools(server: McpServer): void {
   server.tool(
     'shutdown',
     {
-      flags: z.number().describe('Shutdown flags')
+      flags: z.number().int().min(-2147483648).max(2147483647).describe('Shutdown flags')
     },
     async ({ flags }) => {
       try {
@@ -242,7 +242,7 @@ export function registerProcessTools(server: McpServer): void {
         return createToolResponse(
           success
             ? `System shutdown initiated with flags: ${flags}`
-            : `Failed to initiate system shutdown`
+            : `Failed to initiate system shutdown`, !success
         );
       } catch (error) {
         log.error('shutdown failed', error);

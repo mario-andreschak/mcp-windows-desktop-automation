@@ -2,11 +2,11 @@
  * Keyboard-related tools for MCP Windows Desktop Automation
  */
 
-import * as autoIt from 'node-autoit-koffi';
+import { autoIt } from '../native/runtime.js';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { createToolResponse, createErrorResponse } from '../utils/types';
-import { log } from '../utils/logger/logger';
+import { ToolRegistry as McpServer } from '../server/tools.js';
+import { createToolResponse, createErrorResponse } from '../utils/types.js';
+import { log } from '../utils/logger/logger.js';
 
 /**
  * Register keyboard-related tools with the MCP server
@@ -16,8 +16,8 @@ export function registerKeyboardTools(server: McpServer): void {
   server.tool(
     'send',
     {
-      text: z.string().describe('Text or keys to send'),
-      mode: z.number().optional().default(0).describe('Send mode flag')
+      text: z.string().max(65535).describe('Text or keys to send'),
+      mode: z.number().int().min(-2147483648).max(2147483647).optional().default(0).describe('Send mode flag')
     },
     async ({ text, mode }) => {
       try {
@@ -36,7 +36,7 @@ export function registerKeyboardTools(server: McpServer): void {
   server.tool(
     'clipGet',
     {
-      bufSize: z.number().optional().describe('Buffer size for clipboard content')
+      bufSize: z.number().int().min(-2147483648).max(2147483647).optional().describe('Buffer size for clipboard content')
     },
     async ({ bufSize }) => {
       try {
@@ -56,7 +56,7 @@ export function registerKeyboardTools(server: McpServer): void {
   server.tool(
     'clipPut',
     {
-      text: z.string().describe('Text to put in the clipboard')
+      text: z.string().max(65535).describe('Text to put in the clipboard')
     },
     async ({ text }) => {
       try {
@@ -75,8 +75,8 @@ export function registerKeyboardTools(server: McpServer): void {
   server.tool(
     'autoItSetOption',
     {
-      option: z.string().describe('Option name'),
-      value: z.number().describe('Option value')
+      option: z.string().max(65535).describe('Option name'),
+      value: z.number().int().min(-2147483648).max(2147483647).describe('Option value')
     },
     async ({ option, value }) => {
       try {
@@ -95,8 +95,8 @@ export function registerKeyboardTools(server: McpServer): void {
   server.tool(
     'opt',
     {
-      option: z.string().describe('Option name'),
-      value: z.number().describe('Option value')
+      option: z.string().max(65535).describe('Option name'),
+      value: z.number().int().min(-2147483648).max(2147483647).describe('Option value')
     },
     async ({ option, value }) => {
       try {
@@ -115,9 +115,9 @@ export function registerKeyboardTools(server: McpServer): void {
   server.tool(
     'toolTip',
     {
-      text: z.string().describe('Tooltip text'),
-      x: z.number().optional().describe('X coordinate'),
-      y: z.number().optional().describe('Y coordinate')
+      text: z.string().max(65535).describe('Tooltip text'),
+      x: z.number().int().min(-2147483648).max(2147483647).optional().describe('X coordinate'),
+      y: z.number().int().min(-2147483648).max(2147483647).optional().describe('Y coordinate')
     },
     async ({ text, x, y }) => {
       try {

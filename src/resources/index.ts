@@ -1,198 +1,43 @@
-/**
- * Resources module for MCP Windows Desktop Automation
- */
-
-import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as autoIt from 'node-autoit-koffi';
-import { log } from '../utils/logger/logger';
-
-/**
- * Register all resources with the MCP server
- */
-export function registerAllResources(server: McpServer): void {
-  // Register file resources
-  registerFileResources(server);
-  
-  // Register screenshot resources
-  registerScreenshotResources(server);
-}
-
-/**
- * Register file resources
- */
-function registerFileResources(server: McpServer): void {
-  server.resource(
-    'file',
-    new ResourceTemplate('file://{path*}', { 
-      list: async () => {
-        return { resources: [] }; // Empty list by default
-      }
-    }),
-    async (uri, params) => {
-      try {
-        // Ensure filePath is a string
-        const filePath = Array.isArray(params.path) ? params.path.join('/') : params.path;
-        log.verbose('Reading file resource', JSON.stringify({ uri: uri.href, filePath }));
-        
-        // Check if file exists
-        const stats = await fs.stat(filePath);
-        
-        if (stats.isDirectory()) {
-          // List directory contents
-          const files = await fs.readdir(filePath);
-          const resources = await Promise.all(
-            files.map(async (file) => {
-              const fullPath = path.join(filePath, file);
-              const fileStats = await fs.stat(fullPath);
-              return {
-                uri: `file://${fullPath.replace(/\\/g, '/')}`,
-                name: file,
-                description: fileStats.isDirectory() ? 'Directory' : 'File'
-              };
-            })
-          );
-          
-          return {
-            contents: [{
-              uri: uri.href,
-              text: `Directory: ${filePath}\n${files.join('\n')}`,
-              mimeType: 'text/plain'
-            }]
-          };
-        } else {
-          // Read file content
-          const content = await fs.readFile(filePath);
-          const extension = path.extname(filePath).toLowerCase();
-          
-          // Determine if it's a text or binary file
-          const isTextFile = [
-            '.txt', '.md', '.js', '.ts', '.html', '.css', '.json', '.xml', 
-            '.csv', '.log', '.ini', '.cfg', '.conf', '.py', '.c', '.cpp', 
-            '.h', '.java', '.sh', '.bat', '.ps1'
-          ].includes(extension);
-          
-          if (isTextFile) {
-            return {
-              contents: [{
-                uri: uri.href,
-                text: content.toString('utf-8'),
-                mimeType: getMimeType(extension)
-              }]
-            };
-          } else {
-            return {
-              contents: [{
-                uri: uri.href,
-                blob: content.toString('base64'),
-                mimeType: getMimeType(extension)
-              }]
-            };
-          }
-        }
-      } catch (error) {
-        log.error('Error reading file resource', error);
-        throw new Error(`Failed to read file: ${error instanceof Error ? error.message : String(error)}`);
-      }
+import { McpServer, ResourceTemplate, type ReadResourceResult } from '@modelcontextprotocol/server';
+import { open, opendir, realpath, stat } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { ToolRegistry } from '../server/tools.js';
+import { screenshot, screenshotShape } from '../native/screenshot.js';
+import { NativeError } from '../native/runtime.js';
+const MAX_FILE = 1024 * 1024;
+export async function readFileResource(uri: URL, roots: readonly string[]): Promise<ReadResourceResult['contents'][number]> {
+  if (uri.protocol !== 'file:' || uri.hostname) throw new NativeError('Only local file URIs are supported.');
+  let file: string;
+  try { file = await realpath(fileURLToPath(uri)); } catch { throw new NativeError('File resource unavailable.'); }
+  if (!roots.some(root => { const rel = path.relative(root, file); return rel === '' || (!rel.startsWith('..' + path.sep) && rel !== '..' && !path.isAbsolute(rel)); }))
+    throw new NativeError('File resource is outside the configured roots.');
+  const info = await stat(file);
+  if (info.isDirectory()) {
+    const dir = await opendir(file); const entries: string[] = [];
+    for await (const entry of dir) { if (entries.length === 1000) throw new NativeError('Directory exceeds 1000 entry limit.'); entries.push(entry.name + (entry.isDirectory() ? '/' : '')); }
+    return { uri: uri.href, mimeType: 'text/plain', text: entries.sort().join('\n') };
+  }
+  if (!info.isFile() || info.size > MAX_FILE) throw new NativeError('File must be regular and at most 1 MiB.');
+  const handle = await open(file, 'r');
+  try {
+    const buffer = Buffer.alloc(MAX_FILE + 1);
+    let bytesRead = 0;
+    while (bytesRead < buffer.length) {
+      const read = await handle.read(buffer, bytesRead, buffer.length - bytesRead, bytesRead);
+      if (!read.bytesRead) break;
+      bytesRead += read.bytesRead;
     }
-  );
+    if (bytesRead > MAX_FILE) throw new NativeError('File exceeds 1 MiB.');
+    return { uri: uri.href, mimeType: 'application/octet-stream', blob: buffer.subarray(0, bytesRead).toString('base64') };
+  } finally { await handle.close(); }
 }
-
-/**
- * Register screenshot resources
- */
-function registerScreenshotResources(server: McpServer): void {
-  server.resource(
-    'screenshot',
-    new ResourceTemplate('screenshot://{window?}', { 
-      list: async () => {
-        return { resources: [] }; // Empty list by default
-      }
-    }),
-    async (uri, params) => {
-      try {
-        await autoIt.init();
-        // Ensure window is a string if provided
-        const windowName = params.window ? String(params.window) : undefined;
-        log.verbose('Taking screenshot', JSON.stringify({ uri: uri.href, window: windowName }));
-        
-        // If window parameter is provided, activate that window first
-        if (windowName) {
-          const windowExists = await autoIt.winExists(windowName);
-          if (windowExists) {
-            await autoIt.winActivate(windowName);
-            // Wait a moment for the window to activate
-            await new Promise(resolve => setTimeout(resolve, 500));
-          } else {
-            throw new Error(`Window "${windowName}" not found`);
-          }
-        }
-        
-        // TODO: Implement actual screenshot capture
-        // This is a placeholder - in a real implementation, you would use
-        // a library like 'screenshot-desktop' or other Windows API bindings
-        // to capture the screen or specific window
-        
-        // For now, we'll return a placeholder message
-        return {
-          contents: [{
-            uri: uri.href,
-            text: `Screenshot of ${windowName || 'full screen'} would be captured here`,
-            mimeType: 'text/plain'
-          }]
-        };
-        
-        // In a real implementation, you would return something like:
-        /*
-        return {
-          contents: [{
-            uri: uri.href,
-            blob: screenshotBase64Data,
-            mimeType: 'image/png'
-          }]
-        };
-        */
-      } catch (error) {
-        log.error('Error taking screenshot', error);
-        throw new Error(`Failed to take screenshot: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }
-  );
-}
-
-/**
- * Get MIME type based on file extension
- */
-function getMimeType(extension: string): string {
-  const mimeTypes: Record<string, string> = {
-    '.txt': 'text/plain',
-    '.html': 'text/html',
-    '.css': 'text/css',
-    '.js': 'application/javascript',
-    '.ts': 'application/typescript',
-    '.json': 'application/json',
-    '.xml': 'application/xml',
-    '.md': 'text/markdown',
-    '.csv': 'text/csv',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.gif': 'image/gif',
-    '.svg': 'image/svg+xml',
-    '.pdf': 'application/pdf',
-    '.doc': 'application/msword',
-    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    '.xls': 'application/vnd.ms-excel',
-    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    '.ppt': 'application/vnd.ms-powerpoint',
-    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    '.zip': 'application/zip',
-    '.rar': 'application/x-rar-compressed',
-    '.7z': 'application/x-7z-compressed',
-    '.tar': 'application/x-tar',
-    '.gz': 'application/gzip'
-  };
-  
-  return mimeTypes[extension] || 'application/octet-stream';
+export function registerAllResources(server: McpServer, registry: ToolRegistry, roots: readonly string[]): void {
+  server.registerResource('file', new ResourceTemplate('file://{+path}', { list: undefined }), { description: 'Local file or directory within configured roots. Maximum 1 MiB or 1000 entries.' },
+    async uri => { try { return { contents: [await readFileResource(uri, roots)] }; } catch { throw new Error('File resource unavailable, outside configured roots, or above its size limit.'); } });
+  server.registerResource('desktop-screenshot', 'screenshot://desktop', { mimeType: 'image/png', description: 'Actual visible Windows desktop pixels; requires an interactive session.' },
+    async (uri, ctx) => ({ contents: [{ uri: uri.href, mimeType: 'image/png', blob: await registry.execute(ctx, () => screenshot({ target: 'fullscreen' })) }] }));
+  server.registerResource('window-screenshot', new ResourceTemplate('screenshot://window/{title}', { list: undefined }), { mimeType: 'image/png', description: 'Window PNG using AutoIt title selection and Win32 PrintWindow. Some applications cannot be captured.' },
+    async (uri, variables, ctx) => ({ contents: [{ uri: uri.href, mimeType: 'image/png', blob: await registry.execute(ctx, () => screenshot({ target: 'window', windowTitle: decodeURIComponent(String(variables.title)) })) }] }));
+  registry.tool('takeScreenshot', screenshotShape, async input => ({ content: [{ type: 'image', mimeType: 'image/png', data: await screenshot(input) }] }));
 }

@@ -2,11 +2,11 @@
  * Mouse-related tools for MCP Windows Desktop Automation
  */
 
-import * as autoIt from 'node-autoit-koffi';
+import { autoIt } from '../native/runtime.js';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { createToolResponse, createErrorResponse, schemas } from '../utils/types';
-import { log } from '../utils/logger/logger';
+import { ToolRegistry as McpServer } from '../server/tools.js';
+import { createToolResponse, createErrorResponse, schemas } from '../utils/types.js';
+import { log } from '../utils/logger/logger.js';
 
 /**
  * Register mouse-related tools with the MCP server
@@ -159,7 +159,7 @@ export function registerMouseTools(server: McpServer): void {
     'mouseWheel',
     {
       direction: z.enum(['up', 'down']).describe('Scroll direction'),
-      clicks: z.number().min(1).describe('Number of clicks to scroll')
+      clicks: z.number().int().min(-2147483648).max(2147483647).min(1).max(100).describe('Number of clicks to scroll')
     },
     async ({ direction, clicks }) => {
       try {
